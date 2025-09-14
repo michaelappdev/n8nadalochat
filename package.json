@@ -1,0 +1,17 @@
+{
+  "name": "n8n-chat-wrapper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "CDN-based wrapper to configure @n8n/chat via URL parameters (Adalo-friendly), deployable on Railway.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>n8n Chat Wrapper</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- n8n Chat CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
+    <style>
+      /* Ensure fullscreen works when mode=fullscreen */
+      html, body { margin: 0; padding: 0; height: 100%; }
+      #n8n-chat { height: 100%; }
+    </style>
+  </head>
+  <body>
+    <!-- Default mount target -->
+    <div id="n8n-chat"></div>
+
+    <script type="module">
+      import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+
+      const params = new URLSearchParams(location.search);
+
+      // Helpers
+      const get = (k, d = undefined) => params.get(k) ?? d;
+      const has = (k) => params.has(k);
+      const toBool = (v, d = false) => {
+        if (v == null) return d;
+        const s = String(v).trim().toLowerCase();
+        return ['1','true','yes','y','on'].includes(s);
+      };
+      const parseJSON = (str) => {
+        try { return JSON.parse(str); } catch { return undefined; }
+      };
+      const fromBase64 = (b64) => {
+        try { return atob(b64); } catch { return undefined; }
+      };
+      // Prefer ...B64 > ...Json > raw JSON in param
+      const getComplex = (baseName) => {
+        if (has(baseName + 'B64')) {
+          const decoded = fromBase64(get(baseName + 'B64'));
+          if (decoded) {
+            const obj = parseJSON(decoded);
+            if (obj) return obj;
+          }
+        }
+        if (has(baseName + 'Json')) {
+          const obj = parseJSON(get(baseName + 'Json'));
+          if (obj) return obj;
+        }
+        // As a last resort, try parsing the raw value
+        if (has(baseName)) {
+          const raw = get(baseName);
+          const obj = parseJSON(raw);
+          if (obj) return obj;
+        }
+        return undefined;
+      };
+
+      // Apply CSS variables via query params:
+      // Any param like cssVar.<name>=<value> becomes --chat--<name>: <value>
+      // Example: cssVar.window--width=480px => --chat--window--width: 480px
+      const root = document.documentElement;
+      for (const [key, value] of params.entries()) {
+        if (key.startsWith('cssVar.')) {
+          const varName = key.slice('cssVar.'.length);
+          if (varName) root.style.setProperty(`--chat--${varName}`, value);
+        }
+      }
+
+      // Required
+      const webhookUrl = get('webhookUrl');
+      if (!webhookUrl) {
+        const msg = 'Missing required "webhookUrl" query parameter.';
+        console.error(msg);
+        const el = document.getElementById('n8n-chat');
+        if (el) el.textContent = msg;
+        throw new Error(msg);
+      }
+
+      // webhookConfig: method + headers
+      const method = get('method', 'POST');
+      const headers = getComplex('headers') || {}; // headersJson / headersB64 / headers
+
+      // Build options
+      const options = {
+        webhookUrl,
+        webhookConfig: { method, headers },
+        target: get('target', '#n8n-chat'),
+        mode: get('mode', 'window'), // 'window' | 'fullscreen'
+
+        // Chat behavior keys
+        chatInputKey: get('chatInputKey', 'chatInput'),
+        chatSessionKey: get('chatSessionKey', 'sessionId'),
+        loadPreviousSession: toBool(get('loadPreviousSession'), true),
+        showWelcomeScreen: toBool(get('showWelcomeScreen'), false),
+        enableStreaming: toBool(get('enableStreaming'), false),
+
+        // Language & text
+        defaultLanguage: get('defaultLanguage', 'en'),
+        i18n: getComplex('i18n'),
+
+        // Initial messages
+        initialMessages: getComplex('initialMessages'),
+
+        // Metadata (passed to workflow)
+        metadata: getComplex('metadata') || {},
+
+        // File uploads
+        allowFileUploads: toBool(get('allowFileUploads'), false),
+        allowedFilesMimeTypes: get('allowedFilesMimeTypes', ''), // e.g. image/*,application/pdf
+      };
+
+      // Initialize chat
+      createChat(options);
+    </script>
+  </body>
+</html>
