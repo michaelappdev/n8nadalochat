@@ -57,16 +57,25 @@
         return undefined;
       };
 
+      // Determine target early so we can apply CSS vars to it too
+      const targetSelector = get('target', '#n8n-chat');
+
       // Apply CSS variables via query params:
       // Any param like cssVar.<name>=<value> becomes --chat--<name>: <value>
       // Example: cssVar.window--width=480px => --chat--window--width: 480px
-      const root = document.documentElement;
-      for (const [key, value] of params.entries()) {
-        if (key.startsWith('cssVar.')) {
-          const varName = key.slice('cssVar.'.length);
-          if (varName) root.style.setProperty(`--chat--${varName}`, value);
+      const applyCssVars = (styleTarget) => {
+        for (const [key, value] of params.entries()) {
+          if (key.startsWith('cssVar.')) {
+            const varName = key.slice('cssVar.'.length);
+            if (varName) styleTarget.style.setProperty(`--chat--${varName}`, value);
+          }
         }
-      }
+      };
+      // Apply to :root
+      applyCssVars(document.documentElement);
+      // Also apply to the target element (if present)
+      const targetEl = document.querySelector(targetSelector);
+      if (targetEl) applyCssVars(targetEl);
 
       // Required
       const webhookUrl = get('webhookUrl');
@@ -86,7 +95,7 @@
       const options = {
         webhookUrl,
         webhookConfig: { method, headers },
-        target: get('target', '#n8n-chat'),
+        target: targetSelector,
         mode: get('mode', 'window'), // 'window' | 'fullscreen'
 
         // Chat behavior keys
@@ -110,6 +119,16 @@
         allowFileUploads: toBool(get('allowFileUploads'), false),
         allowedFilesMimeTypes: get('allowedFilesMimeTypes', ''), // e.g. image/*,application/pdf
       };
+
+      // Convenience: allow i18nBlank=true to clear title/subtitle if no i18n was supplied
+      if (['1','true','yes','y','on'].includes(String(get('i18nBlank')).trim().toLowerCase()) && !options.i18n) {
+        options.i18n = { [options.defaultLanguage]: { title: '', subtitle: '', footer: '', getStarted: '', inputPlaceholder: 'Type your question..' } };
+      }
+
+      // Debug helper: debug=true logs resolved options
+      if (['1','true','yes','y','on'].includes(String(get('debug')).trim().toLowerCase())) {
+        console.log('[n8n-chat-wrapper] Resolved options:', options);
+      }
 
       // Initialize chat
       createChat(options);
