@@ -10,6 +10,10 @@
       /* Ensure fullscreen works when mode=fullscreen */
       html, body { margin: 0; padding: 0; height: 100%; }
       #n8n-chat { height: 100%; }
+      /* Default brand color (overridable via cssVar.color-primary query param) */
+      :root { --chat--color-primary: #4338CA !important; }
+      /* Also set on the host element so it pierces the shadow DOM */
+      #n8n-chat { --chat--color-primary: #4338CA !important; }
     </style>
   </head>
   <body>
@@ -32,8 +36,19 @@
       const parseJSON = (str) => {
         try { return JSON.parse(str); } catch { return undefined; }
       };
-      const fromBase64 = (b64) => {
-        try { return atob(b64); } catch { return undefined; }
+      const fromBase64 = (input) => {
+        if (input == null) return undefined;
+        try {
+          let b64 = String(input);
+          // Normalize base64url (RFC 4648) to standard base64 for atob
+          b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+          // Add padding if missing
+          const mod = b64.length % 4;
+          if (mod === 2) b64 += '==';
+          else if (mod === 3) b64 += '=';
+          else if (mod === 1) return undefined; // invalid length
+          return atob(b64);
+        } catch { return undefined; }
       };
       // Prefer ...B64 > ...Json > raw JSON in param
       const getComplex = (baseName) => {
@@ -67,7 +82,7 @@
         for (const [key, value] of params.entries()) {
           if (key.startsWith('cssVar.')) {
             const varName = key.slice('cssVar.'.length);
-            if (varName) styleTarget.style.setProperty(`--chat--${varName}`, value);
+            if (varName) styleTarget.style.setProperty(`--chat--${varName}`, value, 'important');
           }
         }
       };
