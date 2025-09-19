@@ -10,10 +10,34 @@
       /* Ensure fullscreen works when mode=fullscreen */
       html, body { margin: 0; padding: 0; height: 100%; }
       #n8n-chat { height: 100%; }
-      /* Default brand color (overridable via cssVar.color-primary query param) */
-      :root { --chat--color-primary: #4338CA !important; }
+      /* Default theme (overridable via cssVar.* query params) */
+      :root {
+        --chat--color-primary: #4338CA !important;
+        --chat--color-secondary: #4338CA !important;
+        --chat--toggle--background: #4338CA !important;
+        --chat--toggle--hover--background: #3726A6 !important;
+        --chat--toggle--active--background: #301E8A !important;
+        --chat--button--background: #4338CA !important;
+        --chat--button--color: #ffffff !important;
+        --chat--header--background: #4338CA !important;
+        --chat--header--color: #ffffff !important;
+        --chat--message--user--background: #4338CA !important;
+        --chat--message--user--color: #ffffff !important;
+      }
       /* Also set on the host element so it pierces the shadow DOM */
-      #n8n-chat { --chat--color-primary: #4338CA !important; }
+      #n8n-chat {
+        --chat--color-primary: #4338CA !important;
+        --chat--color-secondary: #4338CA !important;
+        --chat--toggle--background: #4338CA !important;
+        --chat--toggle--hover--background: #3726A6 !important;
+        --chat--toggle--active--background: #301E8A !important;
+        --chat--button--background: #4338CA !important;
+        --chat--button--color: #ffffff !important;
+        --chat--header--background: #4338CA !important;
+        --chat--header--color: #ffffff !important;
+        --chat--message--user--background: #4338CA !important;
+        --chat--message--user--color: #ffffff !important;
+      }
     </style>
   </head>
   <body>
