@@ -149,12 +149,35 @@
         const meta = getComplex('metadata') || {};
         const proj = get('projectid') ?? get('projectId');
         if (proj != null && meta.projectId == null) meta.projectId = proj;
+
+        // Per-key metadata shorthands
         for (const [key, value] of params.entries()) {
           if (key.startsWith('m.') || key.startsWith('meta.')) {
             const k = key.startsWith('m.') ? key.slice(2) : key.slice(5);
             if (k) meta[k] = value;
           }
         }
+
+        // Generic capture: treat any non-reserved param as metadata
+        const reservedSimple = new Set([
+          'webhookUrl','webhookUrlB64','webhook','wh','url',
+          'method','target','mode','chatInputKey','chatSessionKey',
+          'loadPreviousSession','showWelcomeScreen','enableStreaming',
+          'defaultLanguage','allowFileUploads','allowedFilesMimeTypes',
+          'debug','i18nBlank',
+          // handled above
+          'projectid','projectId'
+        ]);
+        const reservedComplexBases = new Set(['i18n','initialMessages','metadata','headers']);
+        for (const [key, value] of params.entries()) {
+          if (key.startsWith('cssVar.')) continue;
+          if (key.startsWith('m.') || key.startsWith('meta.')) continue;
+          if (reservedSimple.has(key)) continue;
+          const base = key.replace(/(Json|B64)$/,'');
+          if (reservedComplexBases.has(base)) continue;
+          if (meta[key] == null) meta[key] = value;
+        }
+
         return meta;
       })();
 
