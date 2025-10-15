@@ -95,6 +95,11 @@
         }
         return undefined;
       };
+      const normalizeMode = (m) => {
+        const v = String(m || '').toLowerCase();
+        if (v === 'full' || v === 'fs') return 'fullscreen';
+        return m;
+      };
 
       // Determine target early so we can apply CSS vars to it too
       const targetSelector = get('target', '#n8n-chat');
@@ -116,10 +121,16 @@
       const targetEl = document.querySelector(targetSelector);
       if (targetEl) applyCssVars(targetEl);
 
-      // Required
-      const webhookUrl = get('webhookUrl');
+      // Required (support aliases + base64)
+      const webhookUrl = (
+        get('webhookUrl') ??
+        fromBase64(get('webhookUrlB64')) ??
+        get('webhook') ??
+        get('wh') ??
+        get('url')
+      );
       if (!webhookUrl) {
-        const msg = 'Missing required "webhookUrl" query parameter.';
+        const msg = 'Missing required "webhookUrl" (aliases: webhookUrlB64, webhook, wh, url).';
         console.error(msg);
         const el = document.getElementById('n8n-chat');
         if (el) el.textContent = msg;
@@ -130,12 +141,29 @@
       const method = get('method', 'POST');
       const headers = getComplex('headers') || {}; // headersJson / headersB64 / headers
 
+      // Normalize mode aliases with fullscreen as default
+      const mode = normalizeMode(get('mode', 'fullscreen'));
+
+      // Metadata shorthands merged onto complex metadata
+      const resolvedMetadata = (() => {
+        const meta = getComplex('metadata') || {};
+        const proj = get('projectid') ?? get('projectId');
+        if (proj != null && meta.projectId == null) meta.projectId = proj;
+        for (const [key, value] of params.entries()) {
+          if (key.startsWith('m.') || key.startsWith('meta.')) {
+            const k = key.startsWith('m.') ? key.slice(2) : key.slice(5);
+            if (k) meta[k] = value;
+          }
+        }
+        return meta;
+      })();
+
       // Build options
       const options = {
         webhookUrl,
         webhookConfig: { method, headers },
         target: targetSelector,
-        mode: get('mode', 'window'), // 'window' | 'fullscreen'
+        mode, // 'window' | 'fullscreen'
 
         // Chat behavior keys
         chatInputKey: get('chatInputKey', 'chatInput'),
@@ -152,15 +180,16 @@
         initialMessages: getComplex('initialMessages'),
 
         // Metadata (passed to workflow)
-        metadata: getComplex('metadata') || {},
+        metadata: resolvedMetadata,
 
         // File uploads
         allowFileUploads: toBool(get('allowFileUploads'), false),
         allowedFilesMimeTypes: get('allowedFilesMimeTypes', ''), // e.g. image/*,application/pdf
       };
 
-      // Convenience: allow i18nBlank=true to clear title/subtitle if no i18n was supplied
-      if (['1','true','yes','y','on'].includes(String(get('i18nBlank')).trim().toLowerCase()) && !options.i18n) {
+      // Convenience: default i18nBlank=true to clear title/subtitle if no i18n was supplied (overridable with i18nBlank=false)
+      const i18nBlank = toBool(get('i18nBlank'), true);
+      if (i18nBlank && !options.i18n) {
         options.i18n = { [options.defaultLanguage]: { title: '', subtitle: '', footer: '', getStarted: '', inputPlaceholder: 'Type your question..' } };
       }
 
